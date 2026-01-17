@@ -60,11 +60,14 @@ export default function SignUpScreen() {
           <View className="flex-1 px-6 pt-8">
             {/* Header */}
             <View className="items-center mb-8">
-              <Text className="text-telofy-accent text-4xl font-bold tracking-tight">
-                TELOFY
+              <Text 
+                className="text-telofy-accent text-5xl tracking-tight"
+                style={{ fontStyle: 'italic', fontWeight: '300' }}
+              >
+                telofy
               </Text>
-              <Text className="text-telofy-text-secondary mt-2">
-                Turn intention into execution.
+              <Text className="text-telofy-text-secondary mt-2 text-sm tracking-widest uppercase">
+                Turn intention into execution
               </Text>
             </View>
 
