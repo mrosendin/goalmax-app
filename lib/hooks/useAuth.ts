@@ -1,84 +1,185 @@
-import { api, User } from '@/lib/api/client';
-import * as SecureStore from 'expo-secure-store';
-import { useCallback, useEffect, useState } from 'react';
+/**
+ * Authentication hook for Telofy
+ * Handles sign in, sign up, sign out, and session management
+ */
 
-const TOKEN_KEY = 'telofy_auth_token';
-const USER_KEY = 'telofy_user';
+import { useEffect, useCallback } from 'react';
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api } from '../api/client';
+
+// ============================================
+// AUTH STORE
+// ============================================
+
+interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  image?: string;
+  timezone?: string;
+}
+
+interface AuthState {
+  user: AuthUser | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+
+  // Actions
+  setUser: (user: AuthUser | null) => void;
+  setToken: (token: string | null) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  signOut: () => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    immer((set) => ({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+
+      setUser: (user) =>
+        set((state) => {
+          state.user = user;
+          state.isAuthenticated = !!user;
+        }),
+
+      setToken: (token) =>
+        set((state) => {
+          state.token = token;
+          if (token) {
+            api.setToken(token);
+          }
+        }),
+
+      setLoading: (loading) =>
+        set((state) => {
+          state.isLoading = loading;
+        }),
+
+      setError: (error) =>
+        set((state) => {
+          state.error = error;
+        }),
+
+      signOut: () =>
+        set((state) => {
+          state.user = null;
+          state.token = null;
+          state.isAuthenticated = false;
+          state.error = null;
+          api.setToken(null);
+        }),
+    })),
+    {
+      name: 'telofy-auth',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
+    }
+  )
+);
+
+// ============================================
+// AUTH HOOK
+// ============================================
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const {
+    user,
+    token,
+    isAuthenticated,
+    isLoading,
+    error,
+    setUser,
+    setToken,
+    setLoading,
+    setError,
+    signOut: storeSignOut,
+  } = useAuthStore();
 
-  // Load stored auth on mount
+  // Restore token to API client on mount
   useEffect(() => {
-    loadStoredAuth();
-  }, []);
-
-  const loadStoredAuth = async () => {
-    try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
-      const userJson = await SecureStore.getItemAsync(USER_KEY);
-
-      if (token && userJson) {
-        api.setToken(token);
-        setUser(JSON.parse(userJson));
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.error('Failed to load auth:', error);
-    } finally {
-      setIsLoading(false);
+    if (token) {
+      api.setToken(token);
     }
-  };
+  }, [token]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const response = await api.signIn(email, password);
-    
-    await SecureStore.setItemAsync(TOKEN_KEY, response.token);
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(response.user));
-    
-    api.setToken(response.token);
-    setUser(response.user);
-    setIsAuthenticated(true);
-    
-    return response.user;
-  }, []);
+  const signUp = useCallback(
+    async (email: string, password: string, name: string) => {
+      setLoading(true);
+      setError(null);
 
-  const signUp = useCallback(async (email: string, password: string, name: string) => {
-    const response = await api.signUp(email, password, name);
-    
-    await SecureStore.setItemAsync(TOKEN_KEY, response.token);
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(response.user));
-    
-    api.setToken(response.token);
-    setUser(response.user);
-    setIsAuthenticated(true);
-    
-    return response.user;
-  }, []);
+      try {
+        const response = await api.signUp(email, password, name);
+        setUser(response.user);
+        setToken(response.token);
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Sign up failed';
+        setError(message);
+        return { success: false, error: message };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setUser, setToken, setLoading, setError]
+  );
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await api.signIn(email, password);
+        setUser(response.user);
+        setToken(response.token);
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Sign in failed';
+        setError(message);
+        return { success: false, error: message };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setUser, setToken, setLoading, setError]
+  );
 
   const signOut = useCallback(async () => {
+    setLoading(true);
+
     try {
       await api.signOut();
-    } catch (error) {
-      // Ignore error, we're signing out anyway
+    } catch {
+      // Ignore errors, sign out locally anyway
+    } finally {
+      storeSignOut();
+      setLoading(false);
     }
-
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    await SecureStore.deleteItemAsync(USER_KEY);
-    
-    api.setToken(null);
-    setUser(null);
-    setIsAuthenticated(false);
-  }, []);
+  }, [storeSignOut, setLoading]);
 
   return {
     user,
-    isLoading,
     isAuthenticated,
-    signIn,
+    isLoading,
+    error,
     signUp,
+    signIn,
     signOut,
   };
 }
+
+export default useAuth;

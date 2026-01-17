@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,14 @@ import {
   Modal,
   Alert,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useSettingsStore, useObjectiveStore, useTaskStore } from '@/lib/store';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { syncAll, getSyncState, subscribeSyncState, SyncStatus } from '@/lib/services/syncService';
 import * as Notifications from 'expo-notifications';
 import { getScheduledNotificationCount } from '@/lib/services/notificationScheduler';
 
@@ -91,6 +95,9 @@ function SettingRow({
 }
 
 export default function SettingsScreen() {
+  // Auth
+  const { user, isAuthenticated, signOut, isLoading: authLoading } = useAuth();
+
   // Settings store
   const timezone = useSettingsStore((s) => s.timezone);
   const setTimezone = useSettingsStore((s) => s.setTimezone);
@@ -103,6 +110,49 @@ export default function SettingsScreen() {
   // Modals
   const [showTimezoneModal, setShowTimezoneModal] = useState(false);
   const [showAdvanceNoticeModal, setShowAdvanceNoticeModal] = useState(false);
+
+  // Sync state
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const state = getSyncState();
+    setSyncStatus(state.status);
+    setLastSyncAt(state.lastSyncAt);
+
+    return subscribeSyncState((state) => {
+      setSyncStatus(state.status);
+      setLastSyncAt(state.lastSyncAt);
+    });
+  }, []);
+
+  const handleSync = async () => {
+    if (!isAuthenticated) {
+      Alert.alert('Sign In Required', 'Please sign in to sync your data across devices.');
+      return;
+    }
+    const result = await syncAll();
+    if (result.success) {
+      Alert.alert('Sync Complete', 'Your data has been synced successfully.');
+    } else {
+      Alert.alert('Sync Failed', result.error || 'Please try again later.');
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? Your local data will be preserved.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: signOut,
+        },
+      ]
+    );
+  };
 
   // Get display name for timezone
   const getTimezoneLabel = useCallback((tz: string) => {
@@ -156,15 +206,97 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-telofy-bg" edges={['bottom']}>
       <ScrollView className="flex-1 px-5 pt-4">
-        {/* Profile Section */}
-        <View className="items-center py-6 mb-4">
-          <View className="w-20 h-20 rounded-full bg-telofy-surface items-center justify-center mb-4">
-            <FontAwesome name="user" size={32} color="#52525b" />
+        {/* Account Section */}
+        <View className="rounded-2xl bg-telofy-surface border border-telofy-border mb-6 p-4">
+          <View className="flex-row items-center">
+            <View className="w-14 h-14 rounded-full bg-telofy-bg items-center justify-center">
+              <FontAwesome 
+                name={isAuthenticated ? 'user-circle' : 'user'} 
+                size={28} 
+                color={isAuthenticated ? '#22c55e' : '#52525b'} 
+              />
+            </View>
+            <View className="flex-1 ml-4">
+              {isAuthenticated ? (
+                <>
+                  <Text className="text-telofy-text font-semibold">{user?.name}</Text>
+                  <Text className="text-telofy-text-secondary text-sm">{user?.email}</Text>
+                </>
+              ) : (
+                <>
+                  <Text className="text-telofy-text font-semibold">Not Signed In</Text>
+                  <Text className="text-telofy-text-secondary text-sm">
+                    Sign in to sync across devices
+                  </Text>
+                </>
+              )}
+            </View>
+            {isAuthenticated ? (
+              <Pressable
+                className="bg-telofy-bg px-4 py-2 rounded-lg"
+                onPress={handleSignOut}
+              >
+                <Text className="text-telofy-text-secondary text-sm">Sign Out</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                className="bg-telofy-accent px-4 py-2 rounded-lg"
+                onPress={() => router.push('/(auth)/sign-in')}
+              >
+                <Text className="text-telofy-bg font-semibold text-sm">Sign In</Text>
+              </Pressable>
+            )}
           </View>
-          <Text className="text-telofy-text text-lg font-semibold">Telofy User</Text>
-          <Text className="text-telofy-text-secondary text-sm">
-            {objectives.length} active objective{objectives.length !== 1 ? 's' : ''}
-          </Text>
+
+          {/* Sync Status */}
+          {isAuthenticated && (
+            <View className="mt-4 pt-4 border-t border-telofy-border">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center">
+                  <FontAwesome 
+                    name={syncStatus === 'syncing' ? 'refresh' : 'cloud'} 
+                    size={16} 
+                    color={syncStatus === 'success' ? '#22c55e' : '#52525b'} 
+                  />
+                  <Text className="text-telofy-text-secondary text-sm ml-2">
+                    {syncStatus === 'syncing' 
+                      ? 'Syncing...' 
+                      : lastSyncAt 
+                        ? `Last synced ${lastSyncAt.toLocaleTimeString()}`
+                        : 'Never synced'}
+                  </Text>
+                </View>
+                <Pressable
+                  className="bg-telofy-bg px-4 py-2 rounded-lg flex-row items-center"
+                  onPress={handleSync}
+                  disabled={syncStatus === 'syncing'}
+                >
+                  {syncStatus === 'syncing' ? (
+                    <ActivityIndicator size="small" color="#22c55e" />
+                  ) : (
+                    <>
+                      <FontAwesome name="refresh" size={14} color="#22c55e" />
+                      <Text className="text-telofy-accent text-sm ml-2 font-semibold">Sync</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Stats */}
+        <View className="flex-row mb-6">
+          <View className="flex-1 rounded-2xl bg-telofy-surface border border-telofy-border p-4 mr-2">
+            <Text className="text-telofy-text-secondary text-xs">OBJECTIVES</Text>
+            <Text className="text-telofy-text text-2xl font-bold mt-1">{objectives.length}</Text>
+          </View>
+          <View className="flex-1 rounded-2xl bg-telofy-surface border border-telofy-border p-4 ml-2">
+            <Text className="text-telofy-text-secondary text-xs">STATUS</Text>
+            <Text className="text-telofy-accent text-lg font-bold mt-1">
+              {isAuthenticated ? 'Synced' : 'Local'}
+            </Text>
+          </View>
         </View>
 
         {/* Schedule */}
