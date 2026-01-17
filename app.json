@@ -2,6 +2,7 @@
   "expo": {
     "name": "Telofy",
     "slug": "telofy",
+    "owner": "mrosendin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +20,8 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -56,7 +58,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "@mrosendin/telofy"
+        "projectId": "0593bc33-5ae0-43cb-a1cb-16e549a632ca"
       }
     }
   }
