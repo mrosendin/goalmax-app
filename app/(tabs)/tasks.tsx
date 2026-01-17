@@ -317,6 +317,7 @@ export default function TasksScreen() {
 
               <TextInput
                 className="text-telofy-text p-4 rounded-xl bg-telofy-bg border border-telofy-border mb-6"
+                style={{ textAlignVertical: 'center' }}
                 value={skipReason}
                 onChangeText={setSkipReason}
                 placeholder="Enter reason (optional)"

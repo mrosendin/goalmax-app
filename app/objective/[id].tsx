@@ -475,6 +475,7 @@ export default function ObjectiveDetailScreen() {
 
               <TextInput
                 className="text-telofy-text text-3xl font-bold p-4 rounded-xl bg-telofy-bg border border-telofy-border text-center mb-4"
+                style={{ textAlignVertical: 'center' }}
                 value={inputValue}
                 onChangeText={setInputValue}
                 keyboardType="numeric"
@@ -485,6 +486,7 @@ export default function ObjectiveDetailScreen() {
 
               <TextInput
                 className="text-telofy-text p-4 rounded-xl bg-telofy-bg border border-telofy-border mb-6"
+                style={{ textAlignVertical: 'center' }}
                 value={note}
                 onChangeText={setNote}
                 placeholder="Add a note (optional)"
@@ -532,6 +534,7 @@ export default function ObjectiveDetailScreen() {
 
               <TextInput
                 className="text-telofy-text p-4 rounded-xl bg-telofy-bg border border-telofy-border mb-6"
+                style={{ textAlignVertical: 'center' }}
                 value={note}
                 onChangeText={setNote}
                 placeholder="Add a note (optional)"
