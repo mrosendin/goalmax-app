@@ -25,6 +25,7 @@ class TelofyApiClient {
   ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Origin': API_URL, // Required for Better Auth from mobile apps
       ...(options.headers as Record<string, string>),
     };
 

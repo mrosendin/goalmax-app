@@ -134,7 +134,11 @@ export function useAuth() {
         setToken(response.token);
         return { success: true };
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Sign up failed';
+        let message = err instanceof Error ? err.message : 'Sign up failed';
+        // Translate technical errors to user-friendly messages
+        if (message.includes('origin') || message.includes('Origin')) {
+          message = 'Unable to connect to authentication server. Please try again.';
+        }
         setError(message);
         return { success: false, error: message };
       } finally {
@@ -155,7 +159,11 @@ export function useAuth() {
         setToken(response.token);
         return { success: true };
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Sign in failed';
+        let message = err instanceof Error ? err.message : 'Sign in failed';
+        // Translate technical errors to user-friendly messages
+        if (message.includes('origin') || message.includes('Origin')) {
+          message = 'Unable to connect to authentication server. Please try again.';
+        }
         setError(message);
         return { success: false, error: message };
       } finally {
