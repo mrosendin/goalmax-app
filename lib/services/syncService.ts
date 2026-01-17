@@ -136,10 +136,11 @@ async function syncObjectives(): Promise<{ errors: string[] }> {
       continue;
     }
 
-    console.log(`[SyncService] Uploading new objective: ${local.name}`);
+    console.log(`[SyncService] Uploading new objective: ${local.name} (id: ${local.id})`);
     
     try {
       const result = await api.createObjective({
+        id: local.id, // Send client-generated ID
         name: local.name,
         category: local.category,
         description: local.description,
@@ -147,12 +148,14 @@ async function syncObjectives(): Promise<{ errors: string[] }> {
         endDate: local.timeframe.endDate?.toISOString(),
         dailyCommitmentMinutes: local.timeframe.dailyCommitmentMinutes,
         pillars: local.pillars.map((p) => ({
+          id: p.id, // Send client-generated ID
           name: p.name,
           description: p.description,
           weight: p.weight,
           progress: p.progress,
         })),
         metrics: local.metrics.map((m) => ({
+          id: m.id, // Send client-generated ID
           name: m.name,
           unit: m.unit,
           type: m.type,
@@ -163,6 +166,7 @@ async function syncObjectives(): Promise<{ errors: string[] }> {
           pillarId: m.pillarId,
         })),
         rituals: local.rituals.map((r) => ({
+          id: r.id, // Send client-generated ID
           name: r.name,
           description: r.description,
           frequency: r.frequency,
@@ -172,10 +176,10 @@ async function syncObjectives(): Promise<{ errors: string[] }> {
           pillarId: r.pillarId,
         })),
       });
-      // Store mapping of local ID to server ID
+      // IDs should now match since we send client ID
       if (result.objective) {
-        idMapping.set(local.id, result.objective.id);
-        console.log(`[SyncService] Mapped ${local.id} -> ${result.objective.id}`);
+        idMapping.set(local.id, local.id); // Same ID on both sides
+        console.log(`[SyncService] Synced objective with ID: ${local.id}`);
       }
     } catch (error) {
       const msg = `Failed to upload objective "${local.name}"`;
@@ -279,11 +283,12 @@ async function syncTasks(): Promise<{ errors: string[] }> {
         continue;
       }
 
-      console.log(`[SyncService] Uploading task: ${local.title}`);
+      console.log(`[SyncService] Uploading task: ${local.title} (id: ${local.id})`);
       
       try {
         await api.createTask({
-          objectiveId: serverObjectiveId, // Use mapped ID
+          id: local.id, // Send client-generated ID
+          objectiveId: serverObjectiveId, // Use the objective ID (same on both sides now)
           pillarId: local.pillarId,
           ritualId: local.ritualId,
           title: local.title,
