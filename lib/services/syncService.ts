@@ -45,6 +45,9 @@ export function getSyncState() {
 // SYNC OPERATIONS
 // ============================================
 
+// Store mapping of local IDs to server IDs
+const idMapping = new Map<string, string>();
+
 /**
  * Sync all data with the backend
  */
@@ -58,22 +61,34 @@ export async function syncAll(): Promise<{ success: boolean; error?: string }> {
   syncState = { ...syncState, status: 'syncing', error: null };
   notifyListeners();
 
+  let errors: string[] = [];
+
   try {
-    // Sync objectives first
-    await syncObjectives();
+    // Sync objectives first - this builds the ID mapping
+    const objResult = await syncObjectives();
+    if (objResult.errors.length > 0) {
+      errors = errors.concat(objResult.errors);
+    }
     
-    // Then sync tasks
-    await syncTasks();
+    // Then sync tasks using the ID mapping
+    const taskResult = await syncTasks();
+    if (taskResult.errors.length > 0) {
+      errors = errors.concat(taskResult.errors);
+    }
 
     syncState = {
-      status: 'success',
+      status: errors.length > 0 ? 'error' : 'success',
       lastSyncAt: new Date(),
-      error: null,
+      error: errors.length > 0 ? `${errors.length} item(s) failed to sync` : null,
     };
     notifyListeners();
 
-    console.log('[SyncService] Sync completed successfully');
-    return { success: true };
+    if (errors.length > 0) {
+      console.warn('[SyncService] Sync completed with errors:', errors);
+    } else {
+      console.log('[SyncService] Sync completed successfully');
+    }
+    return { success: errors.length === 0, error: errors.length > 0 ? errors.join(', ') : undefined };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sync failed';
     syncState = {
@@ -91,59 +106,81 @@ export async function syncAll(): Promise<{ success: boolean; error?: string }> {
 /**
  * Sync objectives with the backend
  */
-async function syncObjectives(): Promise<void> {
+async function syncObjectives(): Promise<{ errors: string[] }> {
   const localObjectives = useObjectiveStore.getState().objectives;
-  const { addObjective, updateObjective } = useObjectiveStore.getState();
+  const { addObjective } = useObjectiveStore.getState();
+  const errors: string[] = [];
 
   // Get remote objectives
   const { objectives: remoteObjectives } = await api.getObjectives();
 
-  // Create a map of remote objectives by ID
+  // Build mapping from name to remote ID (for matching)
+  // Also check if any remote objectives match local ones by name
+  const remoteByName = new Map(remoteObjectives.map((o) => [o.name.toLowerCase(), o]));
   const remoteMap = new Map(remoteObjectives.map((o) => [o.id, o]));
   const localMap = new Map(localObjectives.map((o) => [o.id, o]));
 
   // Upload new local objectives (those not in remote)
   for (const local of localObjectives) {
-    if (!remoteMap.has(local.id)) {
-      console.log(`[SyncService] Uploading new objective: ${local.name}`);
-      
-      try {
-        await api.createObjective({
-          name: local.name,
-          category: local.category,
-          description: local.description,
-          targetOutcome: local.targetOutcome,
-          endDate: local.timeframe.endDate?.toISOString(),
-          dailyCommitmentMinutes: local.timeframe.dailyCommitmentMinutes,
-          pillars: local.pillars.map((p) => ({
-            name: p.name,
-            description: p.description,
-            weight: p.weight,
-            progress: p.progress,
-          })),
-          metrics: local.metrics.map((m) => ({
-            name: m.name,
-            unit: m.unit,
-            type: m.type,
-            target: m.target,
-            targetDirection: m.targetDirection,
-            current: m.current,
-            source: m.source,
-            pillarId: m.pillarId,
-          })),
-          rituals: local.rituals.map((r) => ({
-            name: r.name,
-            description: r.description,
-            frequency: r.frequency,
-            daysOfWeek: r.daysOfWeek,
-            timesPerPeriod: r.timesPerPeriod,
-            estimatedMinutes: r.estimatedMinutes,
-            pillarId: r.pillarId,
-          })),
-        });
-      } catch (error) {
-        console.error(`[SyncService] Failed to upload objective ${local.name}:`, error);
+    // Check if already synced by ID
+    if (remoteMap.has(local.id)) {
+      idMapping.set(local.id, local.id);
+      continue;
+    }
+    
+    // Check if exists by name (previously synced but with different ID)
+    const existingByName = remoteByName.get(local.name.toLowerCase());
+    if (existingByName) {
+      console.log(`[SyncService] Found matching objective by name: ${local.name} -> ${existingByName.id}`);
+      idMapping.set(local.id, existingByName.id);
+      continue;
+    }
+
+    console.log(`[SyncService] Uploading new objective: ${local.name}`);
+    
+    try {
+      const result = await api.createObjective({
+        name: local.name,
+        category: local.category,
+        description: local.description,
+        targetOutcome: local.targetOutcome,
+        endDate: local.timeframe.endDate?.toISOString(),
+        dailyCommitmentMinutes: local.timeframe.dailyCommitmentMinutes,
+        pillars: local.pillars.map((p) => ({
+          name: p.name,
+          description: p.description,
+          weight: p.weight,
+          progress: p.progress,
+        })),
+        metrics: local.metrics.map((m) => ({
+          name: m.name,
+          unit: m.unit,
+          type: m.type,
+          target: m.target,
+          targetDirection: m.targetDirection,
+          current: m.current,
+          source: m.source,
+          pillarId: m.pillarId,
+        })),
+        rituals: local.rituals.map((r) => ({
+          name: r.name,
+          description: r.description,
+          frequency: r.frequency,
+          daysOfWeek: r.daysOfWeek,
+          timesPerPeriod: r.timesPerPeriod,
+          estimatedMinutes: r.estimatedMinutes,
+          pillarId: r.pillarId,
+        })),
+      });
+      // Store mapping of local ID to server ID
+      if (result.objective) {
+        idMapping.set(local.id, result.objective.id);
+        console.log(`[SyncService] Mapped ${local.id} -> ${result.objective.id}`);
       }
+    } catch (error) {
+      const msg = `Failed to upload objective "${local.name}"`;
+      console.error(`[SyncService] ${msg}:`, error);
+      errors.push(msg);
     }
   }
 
@@ -207,16 +244,21 @@ async function syncObjectives(): Promise<void> {
       };
       
       addObjective(localObjective);
+      // Map the ID to itself since it came from server
+      idMapping.set(localObjective.id, localObjective.id);
     }
   }
+
+  return { errors };
 }
 
 /**
  * Sync tasks with the backend
  */
-async function syncTasks(): Promise<void> {
+async function syncTasks(): Promise<{ errors: string[] }> {
   const localTasks = useTaskStore.getState().tasks;
-  const { addTasks, updateTask } = useTaskStore.getState();
+  const { addTasks } = useTaskStore.getState();
+  const errors: string[] = [];
 
   // Get today's tasks from remote
   const today = new Date().toISOString().split('T')[0];
@@ -229,11 +271,19 @@ async function syncTasks(): Promise<void> {
   // Upload new local tasks
   for (const local of localTasks) {
     if (!remoteMap.has(local.id)) {
-      console.log(`[SyncService] Uploading new task: ${local.title}`);
+      // Get the mapped server objective ID
+      const serverObjectiveId = idMapping.get(local.objectiveId);
+      
+      if (!serverObjectiveId) {
+        console.log(`[SyncService] Skipping task "${local.title}" - objective not synced yet`);
+        continue;
+      }
+
+      console.log(`[SyncService] Uploading task: ${local.title}`);
       
       try {
         await api.createTask({
-          objectiveId: local.objectiveId,
+          objectiveId: serverObjectiveId, // Use mapped ID
           pillarId: local.pillarId,
           ritualId: local.ritualId,
           title: local.title,
@@ -243,7 +293,9 @@ async function syncTasks(): Promise<void> {
           durationMinutes: local.durationMinutes,
         });
       } catch (error) {
-        console.error(`[SyncService] Failed to upload task ${local.title}:`, error);
+        const msg = `Failed to upload task "${local.title}"`;
+        console.error(`[SyncService] ${msg}:`, error);
+        errors.push(msg);
       }
     }
   }
@@ -262,6 +314,7 @@ async function syncTasks(): Promise<void> {
         });
       } catch (error) {
         console.error(`[SyncService] Failed to sync task status ${local.title}:`, error);
+        // Don't add to errors - status sync failures are less critical
       }
     }
   }
@@ -289,6 +342,8 @@ async function syncTasks(): Promise<void> {
       addTasks([localTask]);
     }
   }
+
+  return { errors };
 }
 
 /**

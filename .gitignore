@@ -59,3 +59,4 @@ coverage/
 
 expo-env.d.ts
 # @end expo-cli.env.production
+.env.production
