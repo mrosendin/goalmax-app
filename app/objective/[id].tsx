@@ -28,8 +28,10 @@ export default function ObjectiveDetailScreen() {
   const addMetricDataPoint = useObjectiveStore((s) => s.addMetricDataPoint);
   const completeRitual = useObjectiveStore((s) => s.completeRitual);
   const updateObjective = useObjectiveStore((s) => s.updateObjective);
+  const removeObjective = useObjectiveStore((s) => s.removeObjective);
   const tasks = useTaskStore((s) => s.tasks);
   const addTasks = useTaskStore((s) => s.addTasks);
+  const clearTodaysTasks = useTaskStore((s) => s.clearTodaysTasks);
   
   // Memoize today's tasks to avoid infinite loop (using local timezone)
   const todaysTasks = useMemo(() => {
@@ -156,6 +158,42 @@ export default function ObjectiveDetailScreen() {
     updateObjective(objective.id, { isPaused: !objective.isPaused });
   };
 
+  const handleDeleteObjective = () => {
+    Alert.alert(
+      'Delete Objective',
+      `Are you sure you want to delete "${objective.name}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            removeObjective(objective.id);
+            router.replace('/(tabs)');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearTodaysTasks = () => {
+    Alert.alert(
+      'Clear Today\'s Tasks',
+      'This will remove all tasks scheduled for today. You can then regenerate fresh tasks.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear Tasks',
+          style: 'destructive',
+          onPress: () => {
+            clearTodaysTasks();
+            Alert.alert('Tasks Cleared', 'Today\'s tasks have been cleared. Tap "Generate Today\'s Tasks" to create new ones.');
+          },
+        },
+      ]
+    );
+  };
+
   const isRitualCompletedToday = (ritual: Ritual) => {
     if (!ritual.lastCompletedAt) return false;
     return new Date(ritual.lastCompletedAt).toDateString() === new Date().toDateString();
@@ -217,26 +255,38 @@ export default function ObjectiveDetailScreen() {
           <Text className="text-telofy-text-secondary text-sm">{objective.targetOutcome}</Text>
         </View>
 
-        {/* Generate Tasks Button */}
-        <Pressable
-          className={`rounded-2xl p-5 mb-6 flex-row items-center justify-center ${
-            isGeneratingTasks ? 'bg-telofy-muted/20' : 'bg-telofy-accent'
-          }`}
-          onPress={handleGenerateTasks}
-          disabled={isGeneratingTasks || objective.isPaused}
-        >
-          {isGeneratingTasks ? (
-            <>
-              <ActivityIndicator color="#0a0a0b" size="small" />
-              <Text className="text-telofy-bg font-semibold ml-3">Generating Tasks...</Text>
-            </>
-          ) : (
-            <>
-              <FontAwesome name="magic" size={18} color="#0a0a0b" />
-              <Text className="text-telofy-bg font-semibold ml-3">Generate Today's Tasks</Text>
-            </>
+        {/* Task Actions */}
+        <View className="flex-row gap-3 mb-6">
+          <Pressable
+            className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center ${
+              isGeneratingTasks ? 'bg-telofy-muted/20' : 'bg-telofy-accent'
+            }`}
+            onPress={handleGenerateTasks}
+            disabled={isGeneratingTasks || objective.isPaused}
+          >
+            {isGeneratingTasks ? (
+              <>
+                <ActivityIndicator color="#0a0a0b" size="small" />
+                <Text className="text-telofy-bg font-semibold ml-2 text-sm">Generating...</Text>
+              </>
+            ) : (
+              <>
+                <FontAwesome name="magic" size={16} color="#0a0a0b" />
+                <Text className="text-telofy-bg font-semibold ml-2 text-sm">Generate Tasks</Text>
+              </>
+            )}
+          </Pressable>
+          
+          {todaysTasks.length > 0 && (
+            <Pressable
+              className="rounded-2xl p-4 flex-row items-center justify-center bg-telofy-surface border border-telofy-border"
+              onPress={handleClearTodaysTasks}
+            >
+              <FontAwesome name="trash-o" size={16} color="#71717a" />
+              <Text className="text-telofy-text-secondary font-semibold ml-2 text-sm">Clear</Text>
+            </Pressable>
           )}
-        </Pressable>
+        </View>
 
         {/* Pillars */}
         <Text className="text-telofy-text-secondary text-sm mb-3 tracking-wide">
@@ -390,6 +440,18 @@ export default function ObjectiveDetailScreen() {
             </View>
           </>
         )}
+
+        {/* Danger Zone */}
+        <View className="mt-8 pt-6 border-t border-telofy-border">
+          <Text className="text-telofy-error/60 text-xs tracking-wide mb-3">DANGER ZONE</Text>
+          <Pressable
+            className="rounded-xl p-4 flex-row items-center justify-center bg-telofy-error/10 border border-telofy-error/30"
+            onPress={handleDeleteObjective}
+          >
+            <FontAwesome name="trash" size={16} color="#ef4444" />
+            <Text className="text-telofy-error font-semibold ml-3">Delete Objective</Text>
+          </Pressable>
+        </View>
 
         <View className="h-8" />
       </ScrollView>
