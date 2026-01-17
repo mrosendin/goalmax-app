@@ -1,9 +1,9 @@
-import { View, Text, ScrollView, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useObjectiveStore } from '@/lib/store';
 import { CATEGORY_CONFIG, type Objective } from '@/lib/types';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { Link } from 'expo-router';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 function ObjectiveCard({ objective }: { objective: Objective }) {
   const categoryConfig = CATEGORY_CONFIG[objective.category];
@@ -20,6 +20,7 @@ function ObjectiveCard({ objective }: { objective: Objective }) {
   ).length;
 
   return (
+    <Link href={`/objective/${objective.id}`} asChild>
     <Pressable className="rounded-2xl p-5 bg-telofy-surface border border-telofy-border mb-4 active:opacity-90">
       {/* Header */}
       <View className="flex-row items-center mb-4">
@@ -82,6 +83,7 @@ function ObjectiveCard({ objective }: { objective: Objective }) {
         </Text>
       </View>
     </Pressable>
+    </Link>
   );
 }
 
