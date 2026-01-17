@@ -1,7 +1,7 @@
-# Telofy - AI Development Guidelines
+# Telofy Mobile App - AI Development Guidelines
 
 ## Project Overview
-Telofy is an AI-powered accountability and execution system for iOS/Android. It transforms user-defined objectives into completed days through intelligent scheduling, push notifications, and adaptive coaching.
+Telofy is an AI-powered accountability and execution system. This is the Expo React Native mobile app.
 
 ## Brand Voice
 - **Tone**: Serious, system-like, authoritative but not hostile
@@ -14,12 +14,9 @@ Telofy is an AI-powered accountability and execution system for iOS/Android. It 
 - **Language**: TypeScript (strict mode)
 - **Styling**: Nativewind (Tailwind CSS for React Native)
 - **State**: Zustand with Immer middleware
-- **Storage**: 
-  - MMKV for fast local storage
-  - expo-secure-store for sensitive data
-- **AI**: OpenAI SDK (GPT-4)
+- **Storage**: AsyncStorage (Expo Go compatible), expo-secure-store for sensitive data
+- **API**: TanStack Query + backend API client
 - **Notifications**: expo-notifications
-- **Data Fetching**: TanStack Query
 
 ## File Structure
 ```
@@ -29,13 +26,11 @@ app/                    # Expo Router pages
 components/            # Reusable UI components
 lib/
   store/               # Zustand stores
-  api/                 # API clients (OpenAI, backend)
+  api/                 # API client
   hooks/               # Custom React hooks
   utils/               # Utility functions
   types/               # TypeScript types
 assets/
-  fonts/               # Custom fonts
-  images/              # App icons, images
 ```
 
 ## Coding Conventions
@@ -44,101 +39,29 @@ assets/
 - Use strict mode always
 - Prefer `interface` over `type` for object shapes
 - Export types from `lib/types/index.ts`
-- Use descriptive names: `ObjectiveConfig` not `Config`
 
 ### React Native / Expo
 - Use functional components with hooks
 - Prefer `className` (Nativewind) over `style` prop
-- Use expo-router's typed routes
 - Always handle loading/error states
 
 ### Styling with Nativewind
 - Use Tailwind classes via `className` prop
-- Brand colors defined in tailwind.config.js under `telofy.*`
-- Dark mode is default and primary
+- Brand colors in tailwind.config.js under `telofy.*`
+- Dark mode is default
 - Example: `className="bg-telofy-bg text-telofy-text"`
 
 ### State Management
 - Zustand stores in `lib/store/`
 - Use Immer for immutable updates
-- Persist to MMKV where appropriate
-- Keep stores focused and composable
-
-### AI Integration
-- OpenAI client in `lib/api/openai.ts`
-- Use structured outputs where possible
-- Handle rate limits gracefully
-- Cache responses when appropriate
-
-## Component Patterns
-
-### Screen Components
-```tsx
-export default function ObjectiveScreen() {
-  return (
-    <View className="flex-1 bg-telofy-bg">
-      <StatusBar style="light" />
-      {/* Content */}
-    </View>
-  );
-}
-```
-
-### Zustand Store Pattern
-```tsx
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
-
-interface ObjectiveState {
-  objectives: Objective[];
-  addObjective: (objective: Objective) => void;
-}
-
-export const useObjectiveStore = create<ObjectiveState>()(
-  immer((set) => ({
-    objectives: [],
-    addObjective: (objective) =>
-      set((state) => {
-        state.objectives.push(objective);
-      }),
-  }))
-);
-```
-
-## Key Concepts
-
-### Objective Function
-The user's primary goal that Telofy optimizes for. Examples:
-- Looksmaxing (fitness, skincare, grooming)
-- Career advancement (skills, networking, deliverables)
-- Academic performance (study habits, deadlines)
-
-### Execution Loop
-1. User defines objective function
-2. AI breaks down into actionable daily tasks
-3. Tasks are scheduled based on user's time blocks
-4. Push notifications enforce the schedule
-5. Deviations are detected and course-corrected
-
-### Status Language
-- "On track" - Executing as planned
-- "Deviation detected" - Missed or delayed task
-- "Objective aligned" - Actions support the goal
-- "Recalibrating" - Adjusting plan based on feedback
-
-## Testing
-- Test on iOS Simulator and Android Emulator
-- Use Expo Go for rapid iteration
-- Test push notifications on physical devices
+- Persist to AsyncStorage where appropriate
 
 ## Environment Variables
-Required in `.env.local`:
 ```
-EXPO_PUBLIC_OPENAI_API_KEY=sk-...
+EXPO_PUBLIC_API_URL=http://localhost:3001
 ```
 
 ## Common Gotchas
-- MMKV requires native rebuild (not compatible with Expo Go)
-- Push notifications require physical device testing
-- Nativewind classes won't work without proper babel/metro config
+- MMKV requires native rebuild (use AsyncStorage for Expo Go)
+- Push notifications require physical device
 - Always import `global.css` in root layout
