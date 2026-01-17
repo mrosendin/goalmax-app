@@ -99,34 +99,39 @@ export default function ObjectiveDetailScreen() {
       
       if (!plan.tasks || plan.tasks.length === 0) {
         console.warn('[Telofy] AI returned no tasks');
-        alert('No tasks were generated. Please try again.');
+        Alert.alert('No Tasks Generated', 'The AI could not generate tasks. It may be too late in the day, or try again.');
         return;
       }
       
-      // Ensure dates are properly set to today
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      let nextSlot = new Date(now);
+      // Round up to next 15 min slot
+      nextSlot.setMinutes(Math.ceil(nextSlot.getMinutes() / 15) * 15, 0, 0);
       
       const tasks: Task[] = plan.tasks.map((t, index) => {
-        // Parse the AI's scheduled time or create one based on current time
         let scheduledAt: Date;
+        
         if (t.scheduledAt) {
+          // Try to parse the AI's time - it should now be in local time
           scheduledAt = new Date(t.scheduledAt);
-          // If AI returned a different date, adjust to today
-          const taskDateStr = scheduledAt.toISOString().split('T')[0];
-          if (taskDateStr !== today) {
-            console.warn(`[Telofy] Task "${t.title}" had date ${taskDateStr}, adjusting to today`);
-            const hours = scheduledAt.getHours();
-            const minutes = scheduledAt.getMinutes();
-            scheduledAt = new Date(now);
-            scheduledAt.setHours(hours, minutes, 0, 0);
+          
+          // Check if the date is valid
+          if (isNaN(scheduledAt.getTime())) {
+            console.warn(`[Telofy] Invalid date for "${t.title}", using next slot`);
+            scheduledAt = new Date(nextSlot.getTime() + index * 30 * 60 * 1000);
+          }
+          
+          // If the scheduled time is in the past, move it forward
+          if (scheduledAt < now) {
+            console.warn(`[Telofy] Task "${t.title}" was in past, adjusting to next slot`);
+            scheduledAt = new Date(nextSlot.getTime() + index * 30 * 60 * 1000);
           }
         } else {
-          // Default to current time + 30min intervals
-          scheduledAt = new Date(now.getTime() + (index + 1) * 30 * 60 * 1000);
+          // Default to next available slot
+          scheduledAt = new Date(nextSlot.getTime() + index * 30 * 60 * 1000);
         }
         
-        console.log(`[Telofy] Task: "${t.title}" scheduled at ${scheduledAt.toISOString()}`);
+        console.log(`[Telofy] Task: "${t.title}" scheduled at ${scheduledAt.toLocaleTimeString()}`);
         
         return {
           ...t,
@@ -141,7 +146,7 @@ export default function ObjectiveDetailScreen() {
       router.push('/(tabs)/tasks');
     } catch (error: any) {
       console.error('[Telofy] Failed to generate tasks:', error);
-      alert(`Failed to generate tasks: ${error?.message || 'Unknown error'}`);
+      Alert.alert('Generation Failed', error?.message || 'Failed to generate tasks. Please try again.');
     } finally {
       setIsGeneratingTasks(false);
     }

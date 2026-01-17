@@ -156,6 +156,7 @@ interface TaskState {
   skipTask: (id: string, reason?: string) => void;
   startTask: (id: string) => void;
   clearOldTasks: (daysToKeep: number) => void;
+  clearTodaysTasks: () => void;
   
   // Getters
   getTasksForDate: (date: Date) => Task[];
@@ -222,6 +223,12 @@ export const useTaskStore = create<TaskState>()(
           state.tasks = state.tasks.filter(
             (t) => new Date(t.scheduledAt) >= cutoff || t.status === 'pending'
           );
+        }),
+
+      clearTodaysTasks: () =>
+        set((state) => {
+          state.tasks = state.tasks.filter((t) => !isToday(new Date(t.scheduledAt)));
+          console.log('[TaskStore] Cleared today\'s tasks');
         }),
 
       getTasksForDate: (date) => {

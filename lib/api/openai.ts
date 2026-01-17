@@ -238,7 +238,24 @@ export async function generateTaskPlan(
   existingTasks: Task[] = [],
   focusPillarId?: string
 ): Promise<AITaskPlan> {
+  // Get current local time info
+  const now = new Date();
+  const currentTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  const currentDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const hoursRemaining = Math.max(0, 22 - now.getHours()); // Assume end of productive day is 10 PM
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  // Calculate start time for first task (round up to next 15 min)
+  const startMinutes = Math.ceil((now.getMinutes() + 15) / 15) * 15;
+  const startHour = now.getHours() + Math.floor(startMinutes / 60);
+  const startTime = `${startHour % 12 || 12}:${String(startMinutes % 60).padStart(2, '0')} ${startHour >= 12 ? 'PM' : 'AM'}`;
+
   const prompt = `
+CURRENT TIME: ${currentTime} on ${currentDate}
+TIMEZONE: ${timezone}
+HOURS REMAINING TODAY: approximately ${hoursRemaining} hours (until 10 PM)
+FIRST AVAILABLE SLOT: ${startTime}
+
 Objective: ${objective.name}
 Category: ${objective.category}
 Description: ${objective.description}
@@ -255,19 +272,21 @@ Current Metrics:
 ${objective.metrics.map((m) => `- ${m.name}: ${m.current ?? 'not tracked'} ${m.unit} (target: ${m.target ?? 'none'})`).join('\n')}
 
 Available time blocks today:
-${availableTimeBlocks.length > 0 ? availableTimeBlocks.map((b) => `- ${b.start} to ${b.end}`).join('\n') : 'No blocks defined - assume flexible schedule'}
+${availableTimeBlocks.length > 0 ? availableTimeBlocks.map((b) => `- ${b.start} to ${b.end}`).join('\n') : 'Flexible schedule from now until 10 PM'}
 
 Existing scheduled tasks:
 ${existingTasks.length > 0 ? existingTasks.map((t) => `- ${t.title} at ${new Date(t.scheduledAt).toLocaleTimeString()}`).join('\n') : 'None'}
 
 ${focusPillarId ? `Focus on pillar: ${objective.pillars.find((p) => p.id === focusPillarId)?.name}` : ''}
 
-Generate a practical task plan for today that:
-1. Fits within the available time
-2. Prioritizes rituals that are due
-3. Balances pillars based on their weights and current progress
-4. Totals approximately ${objective.timeframe.dailyCommitmentMinutes} minutes
-5. Includes specific, actionable tasks with context on why they matter
+CRITICAL REQUIREMENTS:
+1. Schedule tasks starting FROM NOW (${startTime}) - never in the past!
+2. All scheduledAt timestamps must be in the user's local timezone (${timezone})
+3. Format timestamps as: "${now.toISOString().split('T')[0]}T${String(startHour).padStart(2, '0')}:${String(startMinutes % 60).padStart(2, '0')}:00" (local time, not UTC!)
+4. Space tasks appropriately throughout the remaining day
+5. If it's late (after 8 PM), only schedule 1-2 quick tasks
+6. Prioritize rituals that are due today
+7. Total time should fit within remaining hours (max ${Math.min(objective.timeframe.dailyCommitmentMinutes, hoursRemaining * 60)} minutes)
 
 Respond in JSON:
 {
@@ -278,7 +297,7 @@ Respond in JSON:
       "ritualId": "ritual-id or null",
       "title": "Task name",
       "description": "Brief description",
-      "scheduledAt": "ISO timestamp",
+      "scheduledAt": "ISO timestamp in LOCAL TIME (e.g., ${now.toISOString().split('T')[0]}T${String(startHour).padStart(2, '0')}:${String(startMinutes % 60).padStart(2, '0')}:00)",
       "durationMinutes": 30,
       "whyItMatters": "Brief context on how this advances the objective"
     }

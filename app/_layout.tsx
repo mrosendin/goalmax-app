@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import 'react-native-reanimated';
+import { useAutoTaskGeneration } from '@/lib/hooks/useAutoTaskGeneration';
 
 import '../global.css';
 
@@ -68,11 +69,18 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
+function AutoTaskGenerator() {
+  // This component runs the auto-generation hook
+  useAutoTaskGeneration();
+  return null;
+}
+
 function RootLayoutNav() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={TelofyTheme}>
         <StatusBar style="light" />
+        <AutoTaskGenerator />
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen 
