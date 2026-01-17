@@ -6,14 +6,9 @@
 import { api } from '../api/client';
 import { useObjectiveStore, useTaskStore } from '../store';
 import { useAuthStore } from '../hooks/useAuth';
-import { generateId } from '../utils/id';
 import type { Objective, Task } from '../types';
 
-// Helper to check if a string is a valid UUID
-const isValidUUID = (id: string) => 
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
-// Store mapping of local IDs to server IDs (declared at module level)
+// Store mapping of local IDs to server IDs
 const idMapping = new Map<string, string>();
 
 /**
@@ -185,43 +180,26 @@ async function syncObjectives(): Promise<{ errors: string[] }> {
       continue;
     }
 
-    // Generate new UUID if objective ID isn't already a valid UUID
-    const objectiveId = isValidUUID(local.id) ? local.id : generateId();
-    
-    // Pre-generate UUID mappings for pillars, metrics, and rituals
-    const pillarMappings = local.pillars.map((p) => ({
-      localId: p.id,
-      serverId: isValidUUID(p.id) ? p.id : generateId(),
-    }));
-    const metricMappings = local.metrics.map((m) => ({
-      localId: m.id,
-      serverId: isValidUUID(m.id) ? m.id : generateId(),
-    }));
-    const ritualMappings = local.rituals.map((r) => ({
-      localId: r.id,
-      serverId: isValidUUID(r.id) ? r.id : generateId(),
-    }));
-    
-    console.log(`[SyncService] Uploading new objective: ${local.name} (id: ${objectiveId})`);
+    console.log(`[SyncService] Uploading new objective: ${local.name} (id: ${local.id})`);
     
     try {
       const result = await api.createObjective({
-        id: objectiveId, // Use valid UUID
+        id: local.id,
         name: local.name,
         category: local.category,
         description: local.description,
         targetOutcome: local.targetOutcome,
         endDate: local.timeframe.endDate?.toISOString(),
         dailyCommitmentMinutes: local.timeframe.dailyCommitmentMinutes,
-        pillars: local.pillars.map((p, i) => ({
-          id: pillarMappings[i].serverId,
+        pillars: local.pillars.map((p) => ({
+          id: p.id,
           name: p.name,
           description: p.description,
           weight: p.weight,
           progress: p.progress,
         })),
-        metrics: local.metrics.map((m, i) => ({
-          id: metricMappings[i].serverId,
+        metrics: local.metrics.map((m) => ({
+          id: m.id,
           name: m.name,
           unit: m.unit,
           type: m.type,
@@ -229,26 +207,26 @@ async function syncObjectives(): Promise<{ errors: string[] }> {
           targetDirection: m.targetDirection,
           current: m.current,
           source: m.source,
-          pillarId: m.pillarId ? pillarMappings.find(pm => pm.localId === m.pillarId)?.serverId : undefined,
+          pillarId: m.pillarId,
         })),
-        rituals: local.rituals.map((r, i) => ({
-          id: ritualMappings[i].serverId,
+        rituals: local.rituals.map((r) => ({
+          id: r.id,
           name: r.name,
           description: r.description,
           frequency: r.frequency,
           daysOfWeek: r.daysOfWeek,
           timesPerPeriod: r.timesPerPeriod,
           estimatedMinutes: r.estimatedMinutes,
-          pillarId: r.pillarId ? pillarMappings.find(pm => pm.localId === r.pillarId)?.serverId : undefined,
+          pillarId: r.pillarId,
         })),
       });
-      // Store all the ID mappings
+      // Store ID mappings
       if (result.objective) {
-        idMapping.set(local.id, objectiveId);
-        pillarMappings.forEach(pm => idMapping.set(pm.localId, pm.serverId));
-        metricMappings.forEach(mm => idMapping.set(mm.localId, mm.serverId));
-        ritualMappings.forEach(rm => idMapping.set(rm.localId, rm.serverId));
-        console.log(`[SyncService] Synced objective: ${local.id} -> ${objectiveId} (${pillarMappings.length} pillars, ${ritualMappings.length} rituals)`);
+        idMapping.set(local.id, local.id);
+        local.pillars.forEach(p => idMapping.set(p.id, p.id));
+        local.metrics.forEach(m => idMapping.set(m.id, m.id));
+        local.rituals.forEach(r => idMapping.set(r.id, r.id));
+        console.log(`[SyncService] Synced objective: ${local.id}`);
       }
     } catch (error) {
       const msg = `Failed to upload objective "${local.name}"`;
@@ -352,26 +330,16 @@ async function syncTasks(): Promise<{ errors: string[] }> {
         continue;
       }
 
-      // Generate new UUID if task ID isn't already a valid UUID
-      const taskId = isValidUUID(local.id) ? local.id : generateId();
+      // Map pillarId and ritualId if needed
+      const pillarId = local.pillarId ? (idMapping.get(local.pillarId) || local.pillarId) : undefined;
+      const ritualId = local.ritualId ? (idMapping.get(local.ritualId) || local.ritualId) : undefined;
       
-      // Map pillarId and ritualId to their server UUIDs
-      let pillarId: string | undefined;
-      if (local.pillarId) {
-        pillarId = idMapping.get(local.pillarId) || (isValidUUID(local.pillarId) ? local.pillarId : undefined);
-      }
-      
-      let ritualId: string | undefined;
-      if (local.ritualId) {
-        ritualId = idMapping.get(local.ritualId) || (isValidUUID(local.ritualId) ? local.ritualId : undefined);
-      }
-      
-      console.log(`[SyncService] Uploading task: ${local.title} (id: ${taskId}, pillar: ${pillarId || 'none'}, ritual: ${ritualId || 'none'})`);
+      console.log(`[SyncService] Uploading task: ${local.title}`);
       
       try {
         await api.createTask({
-          id: taskId, // Use valid UUID
-          objectiveId: serverObjectiveId, // Use the mapped server objective ID
+          id: local.id,
+          objectiveId: serverObjectiveId,
           pillarId,
           ritualId,
           title: local.title,
