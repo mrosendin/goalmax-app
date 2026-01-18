@@ -1,5 +1,5 @@
 /**
- * Telofy color constants
+ * goalmax color constants
  * Primary color scheme is dark with green accents
  */
 

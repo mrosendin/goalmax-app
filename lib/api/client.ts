@@ -1,7 +1,7 @@
 /**
- * Telofy API Client
+ * goalmax API Client
  * 
- * Handles communication with the Telofy backend API.
+ * Handles communication with the goalmax backend API.
  * Configure API_URL in your environment.
  */
 
@@ -12,7 +12,7 @@ interface ApiError {
   error: string;
 }
 
-class TelofyApiClient {
+class goalmaxApiClient {
   private token: string | null = null;
 
   setToken(token: string | null) {
@@ -212,7 +212,7 @@ class TelofyApiClient {
 }
 
 // Export singleton instance
-export const api = new TelofyApiClient();
+export const api = new goalmaxApiClient();
 
 // ============================================
 // TYPES

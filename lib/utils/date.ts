@@ -1,5 +1,5 @@
 /**
- * Date utilities for Telofy
+ * Date utilities for goalmax
  */
 
 import { 

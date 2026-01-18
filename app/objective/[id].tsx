@@ -97,12 +97,12 @@ export default function ObjectiveDetailScreen() {
   const handleGenerateTasks = async () => {
     setIsGeneratingTasks(true);
     try {
-      console.log('[Telofy] Generating tasks for objective:', objective.name);
+      console.log('[goalmax] Generating tasks for objective:', objective.name);
       const plan = await generateTaskPlan(objective, [], todaysTasks);
-      console.log('[Telofy] AI returned plan:', JSON.stringify(plan, null, 2));
+      console.log('[goalmax] AI returned plan:', JSON.stringify(plan, null, 2));
       
       if (!plan.tasks || plan.tasks.length === 0) {
-        console.warn('[Telofy] AI returned no tasks');
+        console.warn('[goalmax] AI returned no tasks');
         Alert.alert('No Tasks Generated', 'The AI could not generate tasks. It may be too late in the day, or try again.');
         return;
       }
@@ -121,13 +121,13 @@ export default function ObjectiveDetailScreen() {
           
           // Check if the date is valid
           if (isNaN(scheduledAt.getTime())) {
-            console.warn(`[Telofy] Invalid date for "${t.title}", using next slot`);
+            console.warn(`[goalmax] Invalid date for "${t.title}", using next slot`);
             scheduledAt = new Date(nextSlot.getTime() + index * 30 * 60 * 1000);
           }
           
           // If the scheduled time is in the past, move it forward
           if (scheduledAt < now) {
-            console.warn(`[Telofy] Task "${t.title}" was in past, adjusting to next slot`);
+            console.warn(`[goalmax] Task "${t.title}" was in past, adjusting to next slot`);
             scheduledAt = new Date(nextSlot.getTime() + index * 30 * 60 * 1000);
           }
         } else {
@@ -135,7 +135,7 @@ export default function ObjectiveDetailScreen() {
           scheduledAt = new Date(nextSlot.getTime() + index * 30 * 60 * 1000);
         }
         
-        console.log(`[Telofy] Task: "${t.title}" scheduled at ${scheduledAt.toLocaleTimeString()}`);
+        console.log(`[goalmax] Task: "${t.title}" scheduled at ${scheduledAt.toLocaleTimeString()}`);
         
         return {
           ...t,
@@ -145,11 +145,11 @@ export default function ObjectiveDetailScreen() {
         };
       });
       
-      console.log(`[Telofy] Adding ${tasks.length} tasks to store`);
+      console.log(`[goalmax] Adding ${tasks.length} tasks to store`);
       addTasks(tasks);
       router.push('/(tabs)/tasks');
     } catch (error: any) {
-      console.error('[Telofy] Failed to generate tasks:', error);
+      console.error('[goalmax] Failed to generate tasks:', error);
       Alert.alert('Generation Failed', error?.message || 'Failed to generate tasks. Please try again.');
     } finally {
       setIsGeneratingTasks(false);

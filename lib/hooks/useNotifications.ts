@@ -1,5 +1,5 @@
 /**
- * Push notification hook for Telofy
+ * Push notification hook for goalmax
  * Handles registration, permissions, and scheduling
  */
 
@@ -164,7 +164,7 @@ export async function scheduleEscalationNotification(
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Task Overdue',
-      body: `"${task.title}" was scheduled and not completed. Telofy detected a deviation.`,
+      body: `"${task.title}" was scheduled and not completed. goalmax detected a deviation.`,
       data: { taskId: task.id, type: 'escalation' },
       sound: true,
       priority: Notifications.AndroidNotificationPriority.MAX,

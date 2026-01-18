@@ -124,13 +124,13 @@ function EmptyState() {
         <FontAwesome name="rocket" size={40} color="#22c55e" />
       </View>
       <Text className="text-telofy-text text-2xl font-bold text-center mb-3">
-        Welcome to Telofy
+        Welcome to goalmax
       </Text>
       <Text className="text-telofy-text-secondary text-center mb-2">
         Turn intention into execution.
       </Text>
       <Text className="text-telofy-text-secondary text-center mb-8">
-        Define your objective function and let Telofy handle the execution.
+        Define your objective function and let goalmax handle the execution.
       </Text>
       <Link href="/create-objective" asChild>
         <Pressable className="bg-telofy-accent rounded-xl py-4 px-8 active:opacity-80">

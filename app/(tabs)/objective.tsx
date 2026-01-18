@@ -97,7 +97,7 @@ function EmptyState() {
         No objectives yet
       </Text>
       <Text className="text-telofy-text-secondary text-center mb-8">
-        Define what you want to achieve. Telofy will break it down into actionable pillars, metrics, and daily rituals.
+        Define what you want to achieve. goalmax will break it down into actionable pillars, metrics, and daily rituals.
       </Text>
       <Link href="/create-objective" asChild>
         <Pressable className="bg-telofy-accent rounded-xl py-4 px-8 active:opacity-80">

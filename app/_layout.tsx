@@ -34,8 +34,8 @@ const queryClient = new QueryClient({
   },
 });
 
-// Custom dark theme for Telofy
-const TelofyTheme = {
+// Custom dark theme for goalmax
+const goalmaxTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
@@ -82,7 +82,7 @@ function AppServices() {
 function RootLayoutNav() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider value={TelofyTheme}>
+      <ThemeProvider value={goalmaxTheme}>
         <StatusBar style="light" />
         <AppServices />
         <Stack>

@@ -1,5 +1,5 @@
 /**
- * Zustand stores for Telofy state management
+ * Zustand stores for goalmax state management
  * Using AsyncStorage for Expo Go compatibility
  */
 

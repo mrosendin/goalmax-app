@@ -1,5 +1,5 @@
 /**
- * Authentication hook for Telofy
+ * Authentication hook for goalmax
  * Handles sign in, sign up, sign out, and session management
  */
 

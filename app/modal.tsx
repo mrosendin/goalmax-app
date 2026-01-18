@@ -27,7 +27,7 @@ export default function ModalScreen() {
             Quick Task
           </Text>
           <Text className="text-telofy-text-secondary text-center px-8">
-            Add a task quickly. Telofy will schedule it based on your available time.
+            Add a task quickly. goalmax will schedule it based on your available time.
           </Text>
         </View>
 

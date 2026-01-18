@@ -72,7 +72,9 @@ function notifyListeners() {
 
 export function subscribeSyncState(listener: (state: SyncState) => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function getSyncState() {

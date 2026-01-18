@@ -1,5 +1,5 @@
 /**
- * OpenAI API client for Telofy AI features
+ * OpenAI API client for goalmax AI features
  */
 
 import OpenAI from 'openai';
@@ -86,8 +86,8 @@ async function withRetry<T>(
   throw lastError;
 }
 
-// System prompt for Telofy's AI personality
-const SYSTEM_PROMPT = `You are Telofy, an AI execution system focused on turning user intentions into completed outcomes. Your role is to:
+// System prompt for goalmax's AI personality
+const SYSTEM_PROMPT = `You are goalmax, an AI execution system focused on turning user intentions into completed outcomes. Your role is to:
 
 1. Understand user objectives deeply and break them into actionable components
 2. Create structured plans with pillars (sub-areas), metrics (measurables), and rituals (recurring actions)

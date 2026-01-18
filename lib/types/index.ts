@@ -1,5 +1,5 @@
 /**
- * Core types for the Telofy execution system
+ * Core types for the goalmax execution system
  * Supports multiple simultaneous objectives with rich tracking
  */
 
